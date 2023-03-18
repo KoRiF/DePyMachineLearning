@@ -25,6 +25,7 @@ type
     EditMeteoStationId: TEdit;
     LabelMeteostationId: TLabel;
     procedure ButtonCreatePyClick(Sender: TObject);
+    procedure ButtonFetchDataClick(Sender: TObject);
   private
     { Private declarations }
     procedure SwitchProgressLabelsVisibility(displayed: Boolean);
@@ -55,6 +56,11 @@ begin
   PyModule.CreatePythonEnvironment(UpdateInstallStatus);
 end;
 
+procedure TForm1.ButtonFetchDataClick(Sender: TObject);
+begin
+  PyModule.FetchMeteodata(EditMeteoStationId.Text);
+  TabItemEngineering.IsSelected := True;
+end;
 
 procedure TForm1.DisplayLabelsText(const status, details: string);
 begin

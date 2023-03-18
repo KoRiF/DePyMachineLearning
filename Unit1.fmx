@@ -51,6 +51,16 @@ object Form1: TForm1
       Text = 'Py Status'
       TabOrder = 3
     end
+    object ButtonFetchData: TButton
+      Position.X = 88.000000000000000000
+      Position.Y = 128.000000000000000000
+      Size.Width = 86.000000000000000000
+      Size.Height = 22.000000000000000000
+      Size.PlatformDefault = False
+      TabOrder = 4
+      Text = 'Fetch Data'
+      OnClick = ButtonFetchDataClick
+    end
     object EditMeteoStationId: TEdit
       Touch.InteractiveGestures = [LongTap, DoubleTap]
       TabOrder = 6

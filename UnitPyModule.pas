@@ -38,6 +38,7 @@ type
   public
     { Public declarations }
     procedure InitImportPyModules();
+    procedure FetchMeteodata(const meteoID: string);
   type
     TStatusCallback = reference to procedure (const status, description: string; active: Boolean = True);
 
@@ -77,6 +78,17 @@ begin
 
 end;
 
+procedure TPyModule.FetchMeteodata(const meteoID: string);
+begin
+  var datetime := Import('datetime');
+  var start_ts := datetime.datetime(2022,01,01, 0);
+  var end_ts := datetime.datetime(2022,12,31, 21);
+
+  var hourly := Meteostat1.meteostat.Hourly(meteoID, start_ts, end_ts).fetch();
+
+  MaskFPUExceptions(true);
+  _pybin.print(hourly);
+end;
 
 procedure TPyModule.InitializePythonModules;
 begin
