@@ -49,11 +49,15 @@ object PyModule: TPyModule
     Top = 112
   end
   object Pandas1: TPandas
+    PythonEngine = PythonEngine1
+    PyEnvironment = PyEmbeddedEnvironment1
     ManagerKind = pip
     Left = 120
     Top = 240
   end
   object MatplotLib1: TMatplotLib
+    PythonEngine = PythonEngine1
+    PyEnvironment = PyEmbeddedEnvironment1
     ManagerKind = pip
     Left = 248
     Top = 240
@@ -66,6 +70,8 @@ object PyModule: TPyModule
     Top = 312
   end
   object ScikitLearn1: TScikitLearn
+    PythonEngine = PythonEngine1
+    PyEnvironment = PyEmbeddedEnvironment1
     ManagerKind = pip
     Left = 40
     Top = 376
