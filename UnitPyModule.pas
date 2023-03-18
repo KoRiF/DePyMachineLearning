@@ -46,6 +46,9 @@ type
     procedure InitializePythonModules();
   private
     _StatusCallback: TStatusCallback;
+    _isEnvironmentReady: Boolean;
+  public
+    property IsPythonEnvironmentReady: Boolean read _isEnvironmentReady;
   end;
 
 var
@@ -63,18 +66,13 @@ uses
 
 procedure TPyModule.CreatePythonEnvironment(InstallStatusCallback: TStatusCallback);
 begin
+  _isEnvironmentReady := False;
   Self._StatusCallback := InstallStatusCallback;
 
   InstallStatusCallback('Python', 'Setup Python.', True);
 
   with PyEmbeddedEnvironment1 do
     ActivateAsync(PyEmbeddedEnvironment1.SetupAsync());
-  //var FCancelable :=
-  //InstallStatusCallback('Done!', 'All done.', False);
-  Exit;
-
-
-
 
 end;
 
@@ -136,6 +134,7 @@ procedure TPyModule.PyEmbeddedEnvironment1Ready(Sender: TObject;
   const APythonVersion: string);
 begin
   InitializePythonModules();
+  _isEnvironmentReady := True;
   _StatusCallback('Ready!', 'Ready.', False);
 end;
 

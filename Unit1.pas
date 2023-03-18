@@ -56,6 +56,9 @@ begin
     begin
       SwitchProgressLabelsVisibility(active);
       DisplayLabelsText(status, description);
+
+      if PyModule.IsPythonEnvironmentReady then
+        TabItemData.IsSelected := True;
     end;
   PyModule.CreatePythonEnvironment(UpdateInstallStatus);
 end;
@@ -74,10 +77,12 @@ end;
 
 procedure TForm1.SwitchProgressLabelsVisibility(displayed: Boolean);
 begin
-    AniIndicator1.Enabled := displayed;
-    AniIndicator1.Visible := displayed;
+  var ready := PyModule.IsPythonEnvironmentReady;
 
-    LabelPyStatus.Visible := displayed;
+  AniIndicator1.Enabled := displayed;
+  AniIndicator1.Visible := displayed or not ready;
+
+  LabelPyStatus.Visible := displayed or not ready;
 end;
 
 end.
