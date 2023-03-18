@@ -6,7 +6,7 @@ uses
   System.SysUtils, System.Classes, PythonEngine, PyCommon, PyModule, PyPackage,
   NumPy, PyEnvironment, PyEnvironment.Embeddable, PyEnvironment.AddOn,
   PyEnvironment.AddOn.GetPip, FMX.PythonGUIInputOutput, MatplotLib, Pandas,
-  Meteostat;
+  Meteostat, ScikitLearn, PyEnvironment.AddOn.EnsurePip;
 
 type
 
@@ -19,15 +19,32 @@ type
     Pandas1: TPandas;
     MatplotLib1: TMatplotLib;
     Meteostat1: TMeteostat;
+    ScikitLearn1: TScikitLearn;
+    PyEnvironmentAddOnEnsurePip1: TPyEnvironmentAddOnEnsurePip;
+    procedure NumPy1BeforeInstall(Sender: TObject);
+    procedure NumPy1AfterInstall(Sender: TObject);
+    procedure NumPy1BeforeImport(Sender: TObject);
+    procedure NumPy1AfterImport(Sender: TObject);
+    procedure PyEnvironmentAddOnGetPip1Execute(const ASender: TObject);
+    procedure PyEmbeddedEnvironment1AfterSetup(Sender: TObject;
+      const APythonVersion: string);
+    procedure PyEmbeddedEnvironment1Ready(Sender: TObject;
+      const APythonVersion: string);
   private
     { Private declarations }
-
+    _pybin: Variant;
+    _pymain: Variant;
+    _pyop: Variant;
   public
     { Public declarations }
+    procedure InitImportPyModules();
   type
-    TInstallStatusCallback = reference to procedure (const status, description: string; active: Boolean = True);
+    TStatusCallback = reference to procedure (const status, description: string; active: Boolean = True);
 
-    procedure CreatePythonEnvironment(InstallStatusCallback: TInstallStatusCallback);
+    procedure CreatePythonEnvironment(InstallStatusCallback: TStatusCallback);
+    procedure InitializePythonModules();
+  private
+    _StatusCallback: TStatusCallback;
   end;
 
 var
@@ -41,50 +58,80 @@ implementation
 
 
 uses
-  VarPyth;
+  VarPyth, PyUtils;
 
-procedure TPyModule.CreatePythonEnvironment(InstallStatusCallback: TInstallStatusCallback);
+procedure TPyModule.CreatePythonEnvironment(InstallStatusCallback: TStatusCallback);
 begin
+  Self._StatusCallback := InstallStatusCallback;
 
   InstallStatusCallback('Python', 'Setup Python.', True);
-  TThread.CreateAnonymousThread(procedure()
-  begin
-    try
-      PyEmbeddedEnvironment1.Setup('3.10');
-      TThread.Synchronize(nil, procedure() begin
-        InstallStatusCallback('Python', 'Activating environment.');
-        PyEmbeddedEnvironment1.Activate({'3.10'});
-      end);
 
-      NumPy1.Install();
-      //ScikitLearn1.Install();
+  with PyEmbeddedEnvironment1 do
+    ActivateAsync(PyEmbeddedEnvironment1.SetupAsync());
+  //var FCancelable :=
+  //InstallStatusCallback('Done!', 'All done.', False);
+  Exit;
 
-      TThread.Synchronize(nil, procedure() begin
-        InstallStatusCallback('Importing modules', '');
-        var bm := Import('builtins');
-        NumPy1.Import();
-        InstallStatusCallback('Importing modules', 'NumPy successfully imported.');
-        //ScikitLearn1.Import();
-        //UpdateInstallationStatus('Importing modules', 'Scikit-learn successfully imported.');
 
-        bm.print('We are good to go...' + sLineBreak);
-        bm.print('Printing NumPy installation info.');
-        bm.print(NumPy1.np);
-        //bm.print('Printing Scikit-learn installation info.');
-        //bm.print(ScikitLearn1.sklearn);
-        {
-        bm.print('Creating a NumPy array of ones');
-        bm.print(NumPy1.np.ones(3));
-        }
-        InstallStatusCallback('Done!', 'All done.', False);
-      end);
-    except
-      on E: Exception do begin
-        InstallStatusCallback('Error', 'Setup has failed.', False);
-        ShowException(E, ExceptAddr);
-      end;
-    end;
-  end).Start();
+
+
+end;
+
+
+procedure TPyModule.InitializePythonModules;
+begin
+  _StatusCallback('Importing basic modules', '');
+  InitImportPyModules();
+  _StatusCallback('Advanced modules', 'Install Meteostat');
+  Meteostat1.Install();
+  _StatusCallback('Advanced modules', 'Import Meteostat');
+end;
+
+procedure TPyModule.InitImportPyModules;
+begin
+  _pybin := BuiltinModule();
+  _pymain := MainModule();
+  _pyop := Import('operator');
+end;
+
+procedure TPyModule.NumPy1AfterImport(Sender: TObject);
+begin
+  _StatusCallback('Importing modules', 'NumPy successfully imported.');
+end;
+
+procedure TPyModule.NumPy1AfterInstall(Sender: TObject);
+begin
+  _StatusCallback('NumPy', 'NumPy successfully installed.');
+end;
+
+procedure TPyModule.NumPy1BeforeImport(Sender: TObject);
+begin
+  _StatusCallback('Importing modules', 'Importing NumPy...');
+end;
+
+procedure TPyModule.NumPy1BeforeInstall(Sender: TObject);
+begin
+  _StatusCallback('NumPy',  'Installing NumPy...');
+end;
+
+procedure TPyModule.PyEmbeddedEnvironment1AfterSetup(Sender: TObject;
+  const APythonVersion: string);
+begin
+  _StatusCallback('Setup Done!', 'After setup.', False);
+end;
+
+procedure TPyModule.PyEmbeddedEnvironment1Ready(Sender: TObject;
+  const APythonVersion: string);
+begin
+  InitializePythonModules();
+  _StatusCallback('Ready!', 'Ready.', False);
+end;
+
+procedure TPyModule.PyEnvironmentAddOnGetPip1Execute(const ASender: TObject);
+begin
+  TThread.Synchronize(nil, procedure() begin
+    _StatusCallback('PIP', 'Getting PIP ready...');
+  end);
 end;
 
 end.
