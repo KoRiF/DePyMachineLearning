@@ -28,6 +28,13 @@ type
     PanelPyEnvironment: TPanel;
     PanelData: TPanel;
     Panel2: TPanel;
+    RadioButtonUnsupervized: TRadioButton;
+    PanelWorkflowDivarication: TPanel;
+    RadioButtonSupervized: TRadioButton;
+    TabItemUnsupervized: TTabItem;
+    TabItemSupervized: TTabItem;
+    PanelUnsupervizedLearning: TPanel;
+    ButtonClusterization: TButton;
     procedure ButtonCreatePyClick(Sender: TObject);
     procedure ButtonFetchDataClick(Sender: TObject);
   private
@@ -66,7 +73,12 @@ end;
 procedure TForm1.ButtonFetchDataClick(Sender: TObject);
 begin
   PyModule.FetchMeteodata(EditMeteoStationId.Text);
-  TabItemEngineering.IsSelected := True;
+  if RadioButtonUnsupervized.IsChecked then
+    TabItemUnsupervized.IsSelected := True
+  else if RadioButtonSupervized.IsChecked then
+    TabItemSupervized.IsSelected := True
+  else
+    TabItemEngineering.IsSelected := True;
 end;
 
 procedure TForm1.DisplayLabelsText(const status, details: string);
