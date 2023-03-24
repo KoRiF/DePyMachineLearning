@@ -66,6 +66,8 @@ object Form1: TForm1
       StyleLookup = 'tabitemstyle'
       TabOrder = 0
       Text = 'Python Environment'
+      ExplicitSize.cx = 128.000000000000000000
+      ExplicitSize.cy = 26.000000000000000000
       object PanelPyEnvironment: TPanel
         Align = Client
         Size.Width = 640.000000000000000000
@@ -222,6 +224,8 @@ object Form1: TForm1
       StyleLookup = ''
       TabOrder = 0
       Text = 'Unsupervized Learning'
+      ExplicitSize.cx = 141.000000000000000000
+      ExplicitSize.cy = 26.000000000000000000
       object PanelUnsupervizedLearning: TPanel
         Align = Client
         Size.Width = 640.000000000000000000
@@ -233,6 +237,7 @@ object Form1: TForm1
           Position.Y = 8.000000000000000000
           TabOrder = 1
           Text = 'Clusterization'
+          OnClick = ButtonClusterizationClick
         end
       end
     end
@@ -247,6 +252,8 @@ object Form1: TForm1
       StyleLookup = ''
       TabOrder = 0
       Text = 'Supervized Learning'
+      ExplicitSize.cx = 128.000000000000000000
+      ExplicitSize.cy = 26.000000000000000000
     end
   end
 end

@@ -39,6 +39,7 @@ type
     { Public declarations }
     procedure InitImportPyModules();
     procedure FetchMeteodata(const meteoID: string);
+    procedure ClusterizeMeteodata();
   type
     TStatusCallback = reference to procedure (const status, description: string; active: Boolean = True);
 
@@ -63,6 +64,54 @@ implementation
 
 uses
   VarPyth, PyUtils;
+
+procedure TPyModule.ClusterizeMeteodata;
+const FIG0_PNG = 'MeteoData_Origin_plot.png';
+begin
+  Pandas1.Import();
+  var pd := Pandas1.pandas;
+
+  //----- Set observation interval ---
+  var datetime := Import('datetime');
+  var start_ts := datetime.datetime(2022, 12, 1, 0);
+  var end_ts := datetime.datetime(2022, 12, 12, 21);
+
+  //----- Define set of meteostations ---
+  var meteoIds := TArray<string>.Create('33038', '83566', '50953', '98430');
+
+  //----- Fetch and accumulate meteodata ---
+  var hh := TPyEx.List([]);
+  for var k := Low(meteoIds) to High(meteoIds) do
+  begin
+    _pymain.hourly := Meteostat1.meteostat.Hourly(meteoIDs[k], start_ts, end_ts).fetch();
+    PythonEngine1.ExecString('hourly["wmo"] = ' + meteoIds[k]); //_pymain.hourly.Values['wmo'] := meteoIds[k]; //
+    hh.append(_pymain.hourly);
+  end;
+  _pymain.hdata := pd.concat(hh);
+
+  //------- Plot meteodata ----
+  Matplotlib1.Import();
+  var plt := Import('matplotlib.pyplot'); //var plt := MatplotLib1.plt;
+
+  //MatplotLib1.matplot.use('TkAgg');
+
+  plt.scatter(
+    _pymain.hdata.Values['temp'],//GetItem('temp'),
+    _pymain.hdata.Values['rhum'],//GetItem('rhum'),
+    c:=_pymain.hdata.Values['wmo']//GetItem('wmo')
+    );
+  plt.xlabel('temp');
+  plt.ylabel('rhum');
+  plt.title('wmo');
+
+  plt.colorbar();
+
+  plt.show();
+
+  // Save the figure to a file
+  var fig := plt.gcf();
+  fig.savefig(FIG0_PNG);
+end;
 
 procedure TPyModule.CreatePythonEnvironment(InstallStatusCallback: TStatusCallback);
 begin

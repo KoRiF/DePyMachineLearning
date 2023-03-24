@@ -37,6 +37,7 @@ type
     ButtonClusterization: TButton;
     procedure ButtonCreatePyClick(Sender: TObject);
     procedure ButtonFetchDataClick(Sender: TObject);
+    procedure ButtonClusterizationClick(Sender: TObject);
   private
     { Private declarations }
     procedure SwitchProgressLabelsVisibility(displayed: Boolean);
@@ -53,6 +54,11 @@ implementation
 {$R *.fmx}
 
 uses UnitPyModule;
+
+procedure TForm1.ButtonClusterizationClick(Sender: TObject);
+begin
+  PyModule.ClusterizeMeteodata();
+end;
 
 procedure TForm1.ButtonCreatePyClick(Sender: TObject);
 var UpdateInstallStatus: TPyModule.TStatusCallback;
