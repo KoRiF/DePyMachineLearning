@@ -69,6 +69,7 @@ procedure TPyModule.ClusterizeMeteodata;
 const
   FIG0_PNG = 'MeteoData_Origin_plot.png';
   FIG_KMEANS_PNG = 'MeteoData_K-Means-Clustered_plot.png';
+  FIG_GMM_PNG = 'MeteoData_GMM-Clustered_plot.png';
 begin
   Pandas1.Import();
   var pd := Pandas1.pandas;
@@ -113,7 +114,7 @@ begin
   // Save the figure to a file
   var fig := plt.gcf();
   fig.savefig(FIG0_PNG);
-
+  plt.clf();
   // --------------------------------------------------
   //Do clustering
   ScikitLearn1.Import();
@@ -198,6 +199,63 @@ begin
   // Save the figure to a file
   fig := plt.gcf();
   fig.savefig(FIG_KMEANS_PNG);
+
+  plt.clf();
+// -----------------------------------------------------
+  // Create a GMM clustering model with N_clusters clusters
+  PythonEngine1.ExecString('from sklearn.mixture import GaussianMixture');
+  PythonEngine1.ExecString('from sklearn.preprocessing import StandardScaler');
+
+  MaskFPUExceptions(True);
+  var scaler := ScikitLearn1.sklearn.preprocessing.StandardScaler();
+  var data_std := scaler.fit_transform(df.Values[xycols]);
+
+  // Initialize a Gaussian Mixture Model with N_clusters components
+  var gmm := ScikitLearn1.sklearn.mixture.GaussianMixture(n_components:=N_clusters, n_init:=42, init_params:='kmeans');
+  // Fit the model to the data
+  gmm.fit(data_std);
+
+  // Get the cluster labels for the data
+  labels := gmm.predict(data_std);
+
+  // Add the cluster labels to the original data DataFrame
+  _pymain.df := df;
+  _pymain.labels := labels;
+  PythonEngine1.ExecString('df["ClusterGMMs"] = labels');
+
+  _pymain.gmm_matched := feature_label_majority_checker(df, 'wmo', 'ClusterGMMs');
+  PythonEngine1.ExecString('df["gmm_matched"] = gmm_matched');
+
+
+  plt.scatter(_pymain.df.Values['temp'], _pymain.df.Values['rhum'], c:=_pymain.df.Values['wmo']);
+
+  // Get the points with incorrect labels (i.e. wmo_No<>labels)
+  PythonEngine1.ExecString('incorrect = df[~df["gmm_matched"]]');
+  plt.scatter(_pymain.incorrect.Values['temp'], _pymain.incorrect.Values['rhum'], facecolors:='none', edgecolors:='r', alpha:=0.25, s:=100);
+
+  // Get the points with correct labels (i.e. wmo_No==labels)
+  PythonEngine1.ExecString('correct = df[df["gmm_matched"]]');
+
+  _pybin.print(_pymain.majority_labels);
+  _pybin.print(_pymain.df);
+
+  plt.scatter(_pymain.correct.Values['temp'], _pymain.correct.Values['rhum'], facecolors:='none', edgecolors:='g', alpha:=0.125, s:=100);
+
+  // Add a color bar to the plot
+  plt.colorbar();
+
+  // Set the axis labels
+  plt.xlabel('Temperature (°C)');
+  plt.ylabel('Relative Humidity (%)');
+
+  // Show the plot
+  plt.show();
+
+  // Save the figure to a file
+  fig := plt.gcf();
+  fig.savefig(FIG_GMM_PNG);
+
+
 end;
 
 procedure TPyModule.CreatePythonEnvironment(InstallStatusCallback: TStatusCallback);
