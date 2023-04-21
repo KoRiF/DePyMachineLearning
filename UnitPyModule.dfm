@@ -83,4 +83,12 @@ object PyModule: TPyModule
     Left = 456
     Top = 176
   end
+  object PythonModule1: TPythonModule
+    Engine = PythonEngine1
+    OnInitialization = PythonModule1Initialization
+    ModuleName = 'delphi_mod'
+    Errors = <>
+    Left = 456
+    Top = 16
+  end
 end

@@ -21,6 +21,7 @@ type
     Meteostat1: TMeteostat;
     ScikitLearn1: TScikitLearn;
     PyEnvironmentAddOnEnsurePip1: TPyEnvironmentAddOnEnsurePip;
+    PythonModule1: TPythonModule;
     procedure NumPy1BeforeInstall(Sender: TObject);
     procedure NumPy1AfterInstall(Sender: TObject);
     procedure NumPy1BeforeImport(Sender: TObject);
@@ -30,6 +31,7 @@ type
       const APythonVersion: string);
     procedure PyEmbeddedEnvironment1Ready(Sender: TObject;
       const APythonVersion: string);
+    procedure PythonModule1Initialization(Sender: TObject);
   private
     { Private declarations }
     _pybin: Variant;
@@ -50,6 +52,14 @@ type
     _isEnvironmentReady: Boolean;
   public
     property IsPythonEnvironmentReady: Boolean read _isEnvironmentReady;
+  private
+    type
+      TPyFuncLambda = TFunc<PPyObject, PPyObject, PPyObject>;
+    var
+      _lambda: TPyFuncLambda;
+
+    function _DelphiFunctionPyCdecl(pself, args: PPyObject): PPyObject; cdecl;
+    function EvalLambdaFuncObject(): Variant;
   end;
 
 var
@@ -144,14 +154,21 @@ begin
       // Get the majority clustered_label for each original label group
       var df_groupby_orig := df.groupby(orig_label);
 
-//      var lambda_counter := function (d: Variant): Variant
-//        begin
-//          RESULT := 1;//d.value_counts().index[0];
-//        end;
-      var lambda_counter := VarPythonEval('lambda d: d.value_counts().index[0]');
+      //var lambda_counter := VarPythonEval('d.value_counts().index[0]'); //this works!
+      _lambda := function (self, args: PPyObject): PPyObject
+        begin
+          var pdf: PPyObject := nil;
+          PythonEngine1.PyArg_ParseTuple(args, 'O', @pdf);
+          var d: Variant := VarPythonCreate(pdf); //?! parsed as a string
+
+          //?! how d.value_counts() can "know" anything about outer function call context?!
+          var valcounts := d.value_counts(); //!! "TypeError: value_counts() got an unexpected keyword argument 'func'"
+          RESULT := PythonEngine1.Py_BuildValue('i', 0);//ExtractPythonObjectFrom(0);valcounts.index[0]
+        end;
+      var lambda_counter := EvalLambdaFuncObject();
 
       var label_cluster :=df_groupby_orig.Values[cluster_label];
-      var counted := label_cluster.agg(func:=lambda_counter);
+      var counted := label_cluster.agg({func:=}lambda_counter); //cannot use keyword argument with Delphi-defined lambda due to futher "TypeError: value_counts() got an unexpected keyword argument 'func'"
       var majority_labels := counted.to_dict();
 
 //      var lambda_checker := function (d: Variant): Variant
@@ -164,7 +181,24 @@ begin
       _pymain.majority_labels := majority_labels;
       _pymain.cluster_label := cluster_label;
       _pymain.orig_label := orig_label;
-      var lambda_checker := VarPythonEval('lambda d: d[cluster_label]==majority_labels[d[orig_label]]');
+
+      //var lambda_checker := VarPythonEval('lambda d: d[cluster_label]==majority_labels[d[orig_label]]'); //this works!
+      _lambda := function (self, args: PPyObject): PPyObject
+        begin
+          var pdf: PPyObject := nil;
+          PythonEngine1.PyArg_ParseTuple(args, 'O', @pdf);
+          var d: Variant := VarPythonCreate(pdf);
+
+          var cluster_mark := d.loc.Values[cluster_label];
+          var orig_mark := d.loc.Values[orig_label];
+          var majority_mark := majority_labels.Values[orig_mark];
+          if cluster_mark = majority_mark then
+            RESULT := PythonEngine1.Py_True
+          else
+            RESULT := PythonEngine1.Py_False;
+        end;
+      var lambda_checker := EvalLambdaFuncObject();
+
       RESULT := df.apply(lambda_checker, axis:=1);
     end;
 
@@ -270,6 +304,12 @@ begin
 
 end;
 
+function TPyModule.EvalLambdaFuncObject: Variant;
+begin
+  GetPythonEngine().ExecString('import delphi_mod');
+  RESULT := VarPythonEval('delphi_mod.lambdafunc'); //cannot be named just a 'lambda' => syntax error!
+end;
+
 procedure TPyModule.FetchMeteodata(const meteoID: string);
 begin
   var datetime := Import('datetime');
@@ -337,6 +377,22 @@ begin
   TThread.Synchronize(nil, procedure() begin
     _StatusCallback('PIP', 'Getting PIP ready...');
   end);
+end;
+
+procedure TPyModule.PythonModule1Initialization(Sender: TObject);
+var pd: PPyObject;
+begin
+  _lambda := function (pself, args: PPyObject): PPyObject
+  begin
+    EXIT(PythonEngine1.Py_BuildValue(''));     //stub: return none
+  end;
+
+  PythonModule1.AddDelphiMethod('lambdafunc', _DelphiFunctionPyCdecl, 'lambda') //cannot use just a 'lambda' function name due to rather odd python syntax error message
+end;
+
+function TPyModule._DelphiFunctionPyCdecl(pself, args: PPyObject): PPyObject;
+begin
+  RESULT := _lambda(pself, args);
 end;
 
 end.
