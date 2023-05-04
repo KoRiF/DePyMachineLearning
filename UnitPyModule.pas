@@ -159,16 +159,21 @@ begin
         begin
           var pdf: PPyObject := nil;
           PythonEngine1.PyArg_ParseTuple(args, 'O', @pdf);
-          var d: Variant := VarPythonCreate(pdf); //?! parsed as a string
+          var d: Variant := VarPythonCreate(pdf);
 
-          //?! how d.value_counts() can "know" anything about outer function call context?!
-          var valcounts := d.value_counts(); //!! "TypeError: value_counts() got an unexpected keyword argument 'func'"
-          RESULT := PythonEngine1.Py_BuildValue('i', 0);//ExtractPythonObjectFrom(0);valcounts.index[0]
+          //---how d.value_counts() can "know" anything about outer function call context?---
+          //=> https://pandas.pydata.org/docs/reference/api/pandas.core.groupby.SeriesGroupBy.agg.html
+          //!! "TypeError: value_counts() got an unexpected keyword argument 'func'"
+          var valcounts := d.value_counts();
+          var valcount := valcounts.index[0];
+          RESULT := PythonEngine1.Py_BuildValue('i', valcount);
         end;
       var lambda_counter := EvalLambdaFuncObject();
 
-      var label_cluster :=df_groupby_orig.Values[cluster_label];
-      var counted := label_cluster.agg({func:=}lambda_counter); //cannot use keyword argument with Delphi-defined lambda due to futher "TypeError: value_counts() got an unexpected keyword argument 'func'"
+      var label_cluster := df_groupby_orig.Values[cluster_label];
+
+      //cannot use keyword argument due to futher "TypeError: value_counts() got an unexpected keyword argument 'func'"
+      var counted := label_cluster.agg({func:=}lambda_counter);
       var majority_labels := counted.to_dict();
 
 //      var lambda_checker := function (d: Variant): Variant
