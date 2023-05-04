@@ -55,12 +55,16 @@ type
   private
     type
       TPyFuncLambda = TFunc<PPyObject, PPyObject, PPyObject>;
+      TPyFuncKWLambda = TFunc<PPyObject, PPyObject, PPyObject, PPyObject>;
     var
       _lambda: TPyFuncLambda;
+      _lambda_kw: TPyFuncKWLambda;
 
       _useLambdaEmulation: Boolean;
     function _DelphiFunctionPyCdecl(pself, args: PPyObject): PPyObject; cdecl;
+    function _DelphiFunctionKWPyCdecl(pself, args, kwargs: PPyObject): PPyObject; cdecl;
     function EvalLambdaFuncObject(): Variant;
+    function EvalLambdaKWFuncObject(): Variant;
   public
     property UseLambdaEmulation: Boolean write _useLambdaEmulation;
   end;
@@ -318,6 +322,12 @@ begin
   RESULT := VarPythonEval('delphi_mod.lambdafunc'); //cannot be named just a 'lambda' => syntax error!
 end;
 
+function TPyModule.EvalLambdaKWFuncObject: Variant;
+begin
+  GetPythonEngine().ExecString('import delphi_mod');
+  RESULT := VarPythonEval('delphi_mod.lambdafunckw');
+end;
+
 procedure TPyModule.FetchMeteodata(const meteoID: string);
 begin
   var datetime := Import('datetime');
@@ -395,7 +405,19 @@ begin
     EXIT(PythonEngine1.Py_BuildValue(''));     //stub: return none
   end;
 
-  PythonModule1.AddDelphiMethod('lambdafunc', _DelphiFunctionPyCdecl, 'lambda') //cannot use just a 'lambda' function name due to rather odd python syntax error message
+  _lambda_kw := function (pself, args, kwargs: PPyObject): PPyObject
+  begin
+    EXIT(PythonEngine1.Py_BuildValue(''));     //stub: return none
+  end;
+
+  PythonModule1.AddDelphiMethod('lambdafunc', _DelphiFunctionPyCdecl, 'lambda'); //cannot use just a 'lambda' function name due to rather odd python syntax error message
+  PythonModule1.AddDelphiMethod('lambdafunckw', _DelphiFunctionPyCdecl, 'lambdakw');
+end;
+
+function TPyModule._DelphiFunctionKWPyCdecl(pself, args,
+  kwargs: PPyObject): PPyObject;
+begin
+  RESULT := _lambda_kw(pself, args, kwargs);
 end;
 
 function TPyModule._DelphiFunctionPyCdecl(pself, args: PPyObject): PPyObject;
