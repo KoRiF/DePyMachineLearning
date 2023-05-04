@@ -58,8 +58,11 @@ type
     var
       _lambda: TPyFuncLambda;
 
+      _useLambdaEmulation: Boolean;
     function _DelphiFunctionPyCdecl(pself, args: PPyObject): PPyObject; cdecl;
     function EvalLambdaFuncObject(): Variant;
+  public
+    property UseLambdaEmulation: Boolean write _useLambdaEmulation;
   end;
 
 var
@@ -73,7 +76,7 @@ implementation
 
 
 uses
-  VarPyth, PyUtils;
+  Variants, VarPyth, PyUtils;
 
 procedure TPyModule.ClusterizeMeteodata;
 const
@@ -153,56 +156,56 @@ begin
     begin
       // Get the majority clustered_label for each original label group
       var df_groupby_orig := df.groupby(orig_label);
-
-      //var lambda_counter := VarPythonEval('d.value_counts().index[0]'); //this works!
-      _lambda := function (self, args: PPyObject): PPyObject
-        begin
-          var pdf: PPyObject := nil;
-          PythonEngine1.PyArg_ParseTuple(args, 'O', @pdf);
-          var d: Variant := VarPythonCreate(pdf);
-
-          //---how d.value_counts() can "know" anything about outer function call context?---
-          //=> https://pandas.pydata.org/docs/reference/api/pandas.core.groupby.SeriesGroupBy.agg.html
-          //!! "TypeError: value_counts() got an unexpected keyword argument 'func'"
-          var valcounts := d.value_counts();
-          var valcount := valcounts.index[0];
-          RESULT := PythonEngine1.Py_BuildValue('i', valcount);
-        end;
-      var lambda_counter := EvalLambdaFuncObject();
-
       var label_cluster := df_groupby_orig.Values[cluster_label];
+
+      var lambda_counter := VarPythonEval('lambda d: d.value_counts().index[0]'); //this works!
+      if _useLambdaEmulation then
+      begin
+        _lambda := function (self, args: PPyObject): PPyObject
+          begin
+            var pdf: PPyObject := nil;
+            PythonEngine1.PyArg_ParseTuple(args, 'O', @pdf);
+            var d: Variant := VarPythonCreate(pdf);
+
+            //---how d.value_counts() can "know" anything about outer function call context?---
+            //=> https://pandas.pydata.org/docs/reference/api/pandas.core.groupby.SeriesGroupBy.agg.html
+            //!! "TypeError: value_counts() got an unexpected keyword argument 'func'"
+            var valcounts := d.value_counts();
+            var valcount := valcounts.index[0];
+            var count := StrToInt64(valcount);
+            RESULT := PythonEngine1.PyLong_FromLong(count);
+          end;
+        lambda_counter := EvalLambdaFuncObject();
+      end;
 
       //cannot use keyword argument due to futher "TypeError: value_counts() got an unexpected keyword argument 'func'"
       var counted := label_cluster.agg({func:=}lambda_counter);
       var majority_labels := counted.to_dict();
 
-//      var lambda_checker := function (d: Variant): Variant
-//        begin
-//          var cluster_mark := d.loc.Values[cluster_label];
-//          var majority_mark := d.loc.Values[orig_label];
-//          RESULT := cluster_mark = majority_mark;
-//        end;
-      //_pyop.eq(df.Values[cluster_label], df.Values[orig_label])
       _pymain.majority_labels := majority_labels;
       _pymain.cluster_label := cluster_label;
       _pymain.orig_label := orig_label;
 
-      //var lambda_checker := VarPythonEval('lambda d: d[cluster_label]==majority_labels[d[orig_label]]'); //this works!
-      _lambda := function (self, args: PPyObject): PPyObject
-        begin
-          var pdf: PPyObject := nil;
-          PythonEngine1.PyArg_ParseTuple(args, 'O', @pdf);
-          var d: Variant := VarPythonCreate(pdf);
+      var lambda_checker := VarPythonEval('lambda d: d[cluster_label]==majority_labels[d[orig_label]]'); //this works!
+      if _useLambdaEmulation then
+      begin
+        _lambda := function (self, args: PPyObject): PPyObject
+          begin
+            var pdf: PPyObject := nil;
+            PythonEngine1.PyArg_ParseTuple(args, 'O', @pdf);
+            var d: Variant := VarPythonCreate(pdf);
 
-          var cluster_mark := d.loc.Values[cluster_label];
-          var orig_mark := d.loc.Values[orig_label];
-          var majority_mark := majority_labels.Values[orig_mark];
-          if cluster_mark = majority_mark then
-            RESULT := PythonEngine1.Py_True
-          else
-            RESULT := PythonEngine1.Py_False;
-        end;
-      var lambda_checker := EvalLambdaFuncObject();
+            var cluster_mark := d.loc.Values[cluster_label];
+            var orig_mark := d.loc.Values[orig_label];
+            orig_mark := VarAsType(orig_mark, varInteger);
+            var majority_mark := majority_labels.Values[orig_mark];
+            if cluster_mark = majority_mark then
+              RESULT := PythonEngine1.Py_True
+            else
+              RESULT := PythonEngine1.Py_False;
+          end;
+        lambda_checker := EvalLambdaFuncObject();
+      end;
 
       RESULT := df.apply(lambda_checker, axis:=1);
     end;

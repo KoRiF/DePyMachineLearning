@@ -35,9 +35,11 @@ type
     TabItemSupervized: TTabItem;
     PanelUnsupervizedLearning: TPanel;
     ButtonClusterization: TButton;
+    CheckBoxLambdaEmulation: TCheckBox;
     procedure ButtonCreatePyClick(Sender: TObject);
     procedure ButtonFetchDataClick(Sender: TObject);
     procedure ButtonClusterizationClick(Sender: TObject);
+    procedure CheckBoxLambdaEmulationChange(Sender: TObject);
   private
     { Private declarations }
     procedure SwitchProgressLabelsVisibility(displayed: Boolean);
@@ -85,6 +87,11 @@ begin
     TabItemSupervized.IsSelected := True
   else
     TabItemEngineering.IsSelected := True;
+end;
+
+procedure TForm1.CheckBoxLambdaEmulationChange(Sender: TObject);
+begin
+  PyModule.UseLambdaEmulation := CheckBoxLambdaEmulation.IsChecked;
 end;
 
 procedure TForm1.DisplayLabelsText(const status, details: string);

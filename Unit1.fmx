@@ -97,6 +97,16 @@ object Form1: TForm1
           Position.X = 124.000000000000000000
           Position.Y = 38.000000000000000000
         end
+        object CheckBoxLambdaEmulation: TCheckBox
+          Position.X = 302.000000000000000000
+          Position.Y = 8.000000000000000000
+          Size.Width = 155.000000000000000000
+          Size.Height = 19.000000000000000000
+          Size.PlatformDefault = False
+          TabOrder = 3
+          Text = 'Use Lambda Emulation'
+          OnChange = CheckBoxLambdaEmulationChange
+        end
       end
     end
     object TabItemData: TTabItem
